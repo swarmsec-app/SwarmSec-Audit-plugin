@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "forge",
+    "test",
+    "--match-path",
+    "test/swarmsec/PhantomShares.t.sol",
+    "-vvv",
+    "--offline"
+  ],
+  "command_class": "forge test",
+  "cwd": ".swarmsec-audit/runs/20261101T171953Z/sandbox",
+  "duration_ms": 1079,
+  "exit_code": 0,
+  "fork": false,
+  "id": "TR-001",
+  "network": false,
+  "output_file": "tool-runs/TR-001.log",
+  "output_truncated": false,
+  "timed_out": false,
+  "tool": "forge",
+  "version": "forge Version: 1.5.1-stable"
+}

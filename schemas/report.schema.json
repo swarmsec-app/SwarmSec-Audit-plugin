@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SwarmSec/swarmsec-audit/schemas/report.schema.json",
+  "title": "SwarmSec Audit report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "generator", "generated_at", "run_id", "mode", "target", "scope", "build",
+    "summary", "findings", "unresolved", "dismissed", "candidates", "tool_runs", "tools_detected",
+    "coverage_gaps", "limitations", "disclaimer"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "generator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "swarmsec-audit" },
+        "version": { "type": "string" }
+      }
+    },
+    "generated_at": { "type": "string" },
+    "run_id": { "type": "string" },
+    "mode": { "enum": ["audit", "defi-audit", "attack-surface", "invariants", "verify", "diff-audit"] },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "path", "revision", "diff_range"],
+      "properties": {
+        "name": { "type": "string" },
+        "path": { "type": "string" },
+        "revision": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["commit", "dirty"],
+          "properties": {
+            "commit": { "type": ["string", "null"] },
+            "dirty": { "type": ["boolean", "null"] }
+          }
+        },
+        "diff_range": { "type": ["string", "null"] }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["included", "excluded"],
+      "properties": {
+        "included": { "type": "array", "items": { "type": "string" } },
+        "excluded": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "reason"],
+            "properties": { "path": { "type": "string" }, "reason": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system", "compiler", "status"],
+      "properties": {
+        "system": { "type": ["string", "null"] },
+        "compiler": { "type": ["string", "null"] },
+        "status": { "enum": ["not-attempted", "compiled", "failed", "artifacts-used"] }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["statement", "counts"],
+      "properties": {
+        "statement": { "type": "string" },
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["critical", "high", "medium", "low", "informational"],
+          "properties": {
+            "critical": { "type": "integer", "minimum": 0 },
+            "high": { "type": "integer", "minimum": 0 },
+            "medium": { "type": "integer", "minimum": 0 },
+            "low": { "type": "integer", "minimum": 0 },
+            "informational": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "findings": { "type": "array", "items": { "$ref": "finding.schema.json" } },
+    "unresolved": { "type": "array", "items": { "$ref": "finding.schema.json" } },
+    "candidates": { "type": "array", "items": { "$ref": "finding.schema.json" } },
+    "dismissed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "title", "reason"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "tool_runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id", "tool", "version", "command_class", "argv", "exit_code", "timed_out",
+          "duration_ms", "network", "fork", "output_file", "output_truncated"
+        ],
+        "properties": {
+          "id": { "type": "string", "pattern": "^TR-[0-9]{3,}$" },
+          "tool": { "type": "string" },
+          "version": { "type": ["string", "null"] },
+          "command_class": { "type": "string" },
+          "argv": { "type": "array", "items": { "type": "string" } },
+          "exit_code": { "type": ["integer", "null"] },
+          "timed_out": { "type": "boolean" },
+          "duration_ms": { "type": "integer", "minimum": 0 },
+          "network": { "type": "boolean" },
+          "fork": { "type": "boolean" },
+          "output_file": { "type": "string" },
+          "output_truncated": { "type": "boolean" }
+        }
+      }
+    },
+    "tools_detected": {
+      "type": "object",
+      "additionalProperties": { "type": ["string", "null"] }
+    },
+    "coverage_gaps": { "type": "array", "items": { "type": "string" } },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "disclaimer": { "type": "string" }
+  }
+}

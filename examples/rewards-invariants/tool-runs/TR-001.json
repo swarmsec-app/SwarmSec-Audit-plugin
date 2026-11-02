@@ -1,0 +1,21 @@
+{
+  "argv": [
+    "forge",
+    "test",
+    "--match-path",
+    "test/invariants/StakingInvariants.t.sol",
+    "--offline"
+  ],
+  "command_class": "forge test",
+  "cwd": ".",
+  "duration_ms": 30235,
+  "exit_code": 1,
+  "fork": false,
+  "id": "TR-001",
+  "network": false,
+  "output_file": "tool-runs/TR-001.log",
+  "output_truncated": false,
+  "timed_out": false,
+  "tool": "forge",
+  "version": "forge Version: 1.5.1-stable"
+}

@@ -1,0 +1,10 @@
+Compiling 4 files with Solc 0.8.24
+Solc 0.8.24 finished in 95.68ms
+Compiler run successful!
+
+Ran 2 tests for test/swarmsec/PhantomShares.t.sol:PhantomSharesTest
+[PASS] test_control_withdrawLoopEarnsNothing() (gas: 3606473)
+[PASS] test_phantomSharesCaptureRewards() (gas: 3622898)
+Suite result: ok. 2 passed; 0 failed; 0 skipped; finished in 4.29ms (3.64ms CPU time)
+
+Ran 1 test suite in 7.31ms (4.29ms CPU time): 2 tests passed, 0 failed, 0 skipped (2 total tests)

@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/SwarmSec/swarmsec-audit/schemas/finding.schema.json",
+  "title": "SwarmSec Audit finding",
+  "description": "One security hypothesis or finding. status decides whether it is published: reproduced and supported are findings, unresolved is reported separately, rejected is kept only in the audit log, candidate has not been verified yet.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "id", "title", "category", "severity", "confidence", "status", "summary",
+    "impact", "attacker", "preconditions", "affected_components", "evidence", "reproduction",
+    "verification", "discovered_by", "remediation", "regression_test", "limitations"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "id": { "type": "string", "pattern": "^SWARM-[0-9]{3,}$" },
+    "title": { "type": "string", "minLength": 8, "maxLength": 140 },
+    "category": {
+      "enum": [
+        "access-control", "reentrancy", "external-call", "delegatecall", "initialization",
+        "upgradeability", "storage-layout", "accounting", "rounding", "oracle", "signature-replay",
+        "permit-approval", "token-integration", "denial-of-service", "timing", "governance",
+        "economic", "liquidation", "rewards", "input-validation", "other"
+      ]
+    },
+    "severity": { "enum": ["critical", "high", "medium", "low", "informational"] },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "status": { "enum": ["candidate", "reproduced", "supported", "unresolved", "rejected"] },
+    "summary": { "type": "string", "minLength": 20 },
+    "impact": { "type": "string", "minLength": 10 },
+    "attacker": {
+      "enum": ["unprivileged", "authenticated-user", "privileged-role", "admin", "external-dependency"]
+    },
+    "preconditions": { "type": "array", "items": { "type": "string", "minLength": 3 } },
+    "affected_components": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "contract", "function"],
+        "properties": {
+          "file": { "type": "string", "minLength": 1 },
+          "contract": { "type": "string", "minLength": 1 },
+          "function": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/evidence" }
+    },
+    "reproduction": {
+      "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/reproduction" }]
+    },
+    "verification": {
+      "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/verification" }]
+    },
+    "discovered_by": { "type": "string", "minLength": 1 },
+    "remediation": { "type": "string" },
+    "regression_test": { "type": "string" },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "related": { "type": "array", "items": { "type": "string", "pattern": "^SWARM-[0-9]{3,}$" } },
+    "diff_attribution": { "enum": ["introduced", "worsened", "preexisting", "not-applicable"] }
+  },
+  "$defs": {
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "start_line", "end_line"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "start_line": { "type": "integer", "minimum": 1 },
+        "end_line": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "description"],
+      "properties": {
+        "kind": { "enum": ["source", "call-path", "test", "tool", "state-delta", "reasoning"] },
+        "description": { "type": "string", "minLength": 10 },
+        "location": { "$ref": "#/$defs/location" },
+        "snippet": { "type": "string" },
+        "tool_run": { "type": "string", "pattern": "^TR-[0-9]{3,}$" }
+      }
+    },
+    "reproduction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "command", "tool_run", "result", "environment", "assertions"],
+      "properties": {
+        "method": { "enum": ["foundry-test", "fork-test", "echidna", "medusa", "manual-trace"] },
+        "command": { "type": "string" },
+        "test_file": { "type": ["string", "null"] },
+        "tool_run": { "type": ["string", "null"], "pattern": "^TR-[0-9]{3,}$" },
+        "result": { "enum": ["demonstrated", "not-demonstrated", "inconclusive", "not-run"] },
+        "environment": { "enum": ["local", "fork-simulation", "none"] },
+        "assertions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verifier", "reason", "falsification_attempts"],
+      "properties": {
+        "verifier": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 10 },
+        "falsification_attempts": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

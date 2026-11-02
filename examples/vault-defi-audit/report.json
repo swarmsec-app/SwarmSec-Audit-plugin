@@ -1,0 +1,293 @@
+{
+  "build": {
+    "compiler": "0.8.24",
+    "status": "not-attempted",
+    "system": "foundry"
+  },
+  "candidates": [],
+  "coverage_gaps": [
+    "Slither not installed: no static-analysis cross-check."
+  ],
+  "disclaimer": "This report comes from an automated, model-assisted review. It is not a formal audit, and the absence of findings does not show that the code is safe.",
+  "dismissed": [],
+  "findings": [
+    {
+      "affected_components": [
+        {
+          "contract": "ShareVault",
+          "file": "src/ShareVault.sol",
+          "function": "deposit"
+        },
+        {
+          "contract": "ShareVault",
+          "file": "src/ShareVault.sol",
+          "function": "convertToShares"
+        },
+        {
+          "contract": "ShareVault",
+          "file": "src/ShareVault.sol",
+          "function": "totalAssets"
+        }
+      ],
+      "attacker": "unprivileged",
+      "category": "rounding",
+      "confidence": "medium",
+      "discovered_by": "defi-audit",
+      "evidence": [
+        {
+          "description": "totalAssets is the live token balance, so a plain transfer moves the share price.",
+          "kind": "source",
+          "location": {
+            "end_line": 22,
+            "file": "src/ShareVault.sol",
+            "start_line": 20
+          },
+          "snippet": "function totalAssets() public view returns (uint256) {\n        return asset.balanceOf(address(this));\n    }"
+        },
+        {
+          "description": "Shares round down with no offset or minimum, so a large totalAssets gives 0.",
+          "kind": "source",
+          "location": {
+            "end_line": 26,
+            "file": "src/ShareVault.sol",
+            "start_line": 26
+          },
+          "snippet": "return supply == 0 ? assets : assets * supply / totalAssets();"
+        },
+        {
+          "description": "deposit mints the computed shares even when zero and still pulls the full `assets`; there is no minShares argument.",
+          "kind": "call-path",
+          "location": {
+            "end_line": 38,
+            "file": "src/ShareVault.sol",
+            "start_line": 35
+          },
+          "snippet": "shares = convertToShares(assets);\n        require(asset.transferFrom(msg.sender, address(this), assets), \"transfer failed\");\n        totalSupply += shares;\n        balanceOf[receiver] += shares;"
+        },
+        {
+          "description": "Hand-computed: attacker deposits 1 (1 share), transfers X=1e18, victim deposits V=1e18: shares = floor(1e18*1/(1e18+1)) = 0. Attacker redeems 1 share for (X+1+V) = 2e18+1. Partial case X=1000, V=1500: victim gets 1 share, redeems 1250 of 1500; attacker spends 1001 and receives 1250.",
+          "kind": "reasoning"
+        }
+      ],
+      "id": "SWARM-001",
+      "impact": "A victim who deposits after the attacker's setup loses all (or a large part) of their deposit to the attacker, who redeems their share for the whole balance. With X = V = 1e18 the attacker spends 1e18+1 and receives 2e18+1.",
+      "limitations": [
+        "Not executed; hand-computed only.",
+        "Deployment state is unknown: whether the vault is seeded at deploy, and who deposits first."
+      ],
+      "preconditions": [
+        "totalSupply is tiny when the victim deposits (vault empty or just launched, or all other holders have redeemed); with supply S the donation needed is about V*S - totalAssets, so a seeded vault makes it uneconomic",
+        "The asset is a standard ERC20 whose balanceOf rises on a direct transfer",
+        "The attacker's deposit and donation land before the victim's deposit (bundling, or front-running a pending deposit)"
+      ],
+      "regression_test": "Deposit 1 wei, donate 1e18 directly, then deposit 1e18 as a second user: the call reverts (or the victim can redeem at least 99.99% of 1e18); the attacker's redeem returns at most their own 1e18+1 less nothing from the victim.",
+      "remediation": "Add virtual shares and assets in the conversions (ERC-4626 decimals offset of 6 or more), or burn a minimum amount of shares on the first deposit, or both. Also revert in deposit when shares == 0 and add a minShares parameter. Track assets with an internal counter if donations must not move the price.",
+      "reproduction": null,
+      "schema_version": "1.0",
+      "severity": "high",
+      "status": "supported",
+      "summary": "Share price comes from the live token balance and shares round down, with no virtual offset, minimum first deposit or zero-share check. After a 1 wei first deposit, a direct token transfer raises the price so a later deposit of V mints 0 shares (or 1) while the vault still keeps all V.",
+      "title": "Donation inflation: deposit can mint zero shares and take the depositor's assets",
+      "verification": {
+        "falsification_attempts": [
+          "Looked for a zero-share revert or minShares in deposit: none.",
+          "Checked redeem's `require(shares > 0)`: it only blocks redeeming 0 shares, not the attacker's 1.",
+          "Checked checked-arithmetic overflow at these magnitudes: none.",
+          "Checked a pre-seeded vault: the attack cost scales with totalSupply, so it needs tiny supply; that is recorded as a precondition."
+        ],
+        "reason": "Path traced end to end in source; no zero-share revert, no minimum, no redeem guard stops the attacker's 1 share (redeem only requires shares > 0). Not executed: the user has not approved running tests.",
+        "verifier": "finding-verifier"
+      }
+    },
+    {
+      "affected_components": [
+        {
+          "contract": "ShareVault",
+          "file": "src/ShareVault.sol",
+          "function": "deposit"
+        },
+        {
+          "contract": "ShareVault",
+          "file": "src/ShareVault.sol",
+          "function": "redeem"
+        }
+      ],
+      "attacker": "unprivileged",
+      "category": "economic",
+      "confidence": "medium",
+      "discovered_by": "defi-audit",
+      "evidence": [
+        {
+          "description": "NatSpec states the yield mechanism: it is sent to the vault and reflected through the pro-rata claim.",
+          "kind": "source",
+          "location": {
+            "end_line": 7,
+            "file": "src/ShareVault.sol",
+            "start_line": 6
+          },
+          "snippet": "/// @notice Single-asset yield vault. Shares track a pro-rata claim on every asset the vault holds,\n///         including yield that a strategy keeper sends back to the vault."
+        },
+        {
+          "description": "deposit mints at the pre-yield balance price and redeem pays at the post-yield price, with nothing between them and no restriction on either caller.",
+          "kind": "call-path",
+          "location": {
+            "end_line": 49,
+            "file": "src/ShareVault.sol",
+            "start_line": 42
+          }
+        },
+        {
+          "description": "Arithmetic above (1000/1000 holder, attacker 1000, yield 100): assets 2100 over 2000 shares, attacker redeems 1000 shares for 1050.",
+          "kind": "reasoning"
+        }
+      ],
+      "id": "SWARM-002",
+      "impact": "Long-term holders are diluted. Example: honest holder has 1000 shares on 1000 assets; attacker deposits 1000, keeper sends 100, attacker redeems 1000 shares for 1050 and takes 50 of the 100 yield. In general the attacker captures Y*d/(A+d) of yield Y for a deposit d. No principal is lost.",
+      "limitations": [
+        "Keeper size, cadence and submission method are unknown, so profitability is not quantified.",
+        "Whether the behaviour is intended is unknown; the NatSpec does not promise yield to long-term holders only.",
+        "Not executed; hand-computed only."
+      ],
+      "preconditions": [
+        "The keeper transfers yield to the vault in discrete lumps (per NatSpec); the keeper code is not in this repo",
+        "The attacker can order a deposit before and a redeem after the keeper transfer (sees it in the mempool, or knows the schedule)",
+        "Profit exceeds the attacker's funding cost; capital can be borrowed for the transaction, but only if the loan fee is below the captured yield"
+      ],
+      "regression_test": "Second user deposits, the keeper transfers yield, the second user redeems in the same block: the second user's profit is at most the streamed share for zero elapsed time (zero), and the long-term holder keeps the full yield.",
+      "remediation": "Stream yield over a period (rewardRate style) instead of transferring it as a lump, or charge an entry/exit fee that stays in the vault, or enforce a minimum holding time. If the keeper submits through a private mempool and the amounts are small, document it as accepted.",
+      "reproduction": null,
+      "schema_version": "1.0",
+      "severity": "low",
+      "status": "supported",
+      "summary": "Yield is a plain token transfer to the vault, which steps the share price up at once. There is no lockup, deposit fee, streaming or same-block guard, so an account that deposits before the keeper transfer and redeems after it takes yield pro rata to its capital without being exposed for any time.",
+      "title": "Keeper yield arrives as a lump-sum balance increase, so just-in-time depositors capture it",
+      "verification": {
+        "falsification_attempts": [
+          "Searched for lockup, delay, fee, streaming and same-block guards: none.",
+          "Searched for access control on deposit and redeem: none.",
+          "Grepped for any keeper or strategy transfer in the repo: only the vault's own transfer calls at lines 36 and 47."
+        ],
+        "reason": "Traced in source and hand-computed. No lockup, fee, streaming or access control exists in the 50 lines, and no keeper code is in the repo. Severity lowered by the verifier because only yield moves, never principal, and discrete-harvest vaults share this property.",
+        "verifier": "finding-verifier"
+      }
+    },
+    {
+      "affected_components": [
+        {
+          "contract": "ShareVault",
+          "file": "src/ShareVault.sol",
+          "function": "deposit"
+        },
+        {
+          "contract": "ShareVault",
+          "file": "src/ShareVault.sol",
+          "function": "redeem"
+        }
+      ],
+      "attacker": "external-dependency",
+      "category": "token-integration",
+      "confidence": "medium",
+      "discovered_by": "defi-audit",
+      "evidence": [
+        {
+          "description": "Shares are computed from the nominal amount and the received amount is never measured.",
+          "kind": "source",
+          "location": {
+            "end_line": 38,
+            "file": "src/ShareVault.sol",
+            "start_line": 35
+          },
+          "snippet": "shares = convertToShares(assets);\n        require(asset.transferFrom(msg.sender, address(this), assets), \"transfer failed\");\n        totalSupply += shares;\n        balanceOf[receiver] += shares;"
+        },
+        {
+          "description": "The interface declares bool returns, so empty returndata fails ABI decoding.",
+          "kind": "source",
+          "location": {
+            "end_line": 7,
+            "file": "src/IERC20.sol",
+            "start_line": 6
+          },
+          "snippet": "function transfer(address to, uint256 amount) external returns (bool);\n    function transferFrom(address from, address to, uint256 amount) external returns (bool);"
+        },
+        {
+          "description": "1% fee: Alice 1000 in, vault +990, 1000 shares. Bob 1000 in, vault +990, floor(1000*1000/990) = 1010 shares. Assets 1980 over 2010 shares: Alice redeems 985, last holder gets 995 for 1010 shares. A round-trip attacker pays about 2% fees for about 0.5% gain, so it is not extractable.",
+          "kind": "reasoning"
+        }
+      ],
+      "id": "SWARM-003",
+      "impact": "With a 1% fee-on-transfer token, Bob's 1000 deposit (990 received) mints 1010 shares against Alice's 1000 for 990, shifting about 4.9 of value from Alice to Bob; the vault stays pro-rata solvent because redeem pays from the live balance, so the loss is dilution, not a failing last redemption. With a token that returns no data (USDT-style) every deposit and redeem reverts, so the vault is unusable (deposits revert before minting, so no funds are lost; direct transfers sent to it are stuck). A token whose balance reaches 0 while shares exist makes deposit divide by zero.",
+      "limitations": [
+        "The asset address is not in the repo; the finding is conditional on the token chosen at deployment.",
+        "Not executed; hand-computed only."
+      ],
+      "preconditions": [
+        "The vault is deployed with a fee-on-transfer, no-return-data, or balance-zeroing token as `asset`"
+      ],
+      "regression_test": "With a mock 1% fee token, two equal deposits mint equal shares and each can redeem within rounding of what the vault received; with a no-return-data mock token, deposit and redeem succeed.",
+      "remediation": "Document that the asset must be a plain ERC20, or measure the balance before and after transferFrom and mint shares from the received amount. Use a safeTransfer/safeTransferFrom wrapper for tokens that return nothing.",
+      "reproduction": null,
+      "schema_version": "1.0",
+      "severity": "low",
+      "status": "supported",
+      "summary": "deposit credits shares for the nominal `assets` argument instead of the balance actually received, and both transfer calls are declared to return bool. The asset is an unknown immutable constructor argument, so behaviour depends on the token chosen.",
+      "title": "Vault assumes a plain ERC20: fee-on-transfer dilutes holders, no-return tokens brick it",
+      "verification": {
+        "falsification_attempts": [
+          "Checked whether the last redeemer's transfer can fail for lack of balance: no, the payout is capped by the live balance.",
+          "Checked whether a round-trip attacker profits from the fee-induced dilution: no, about 2% in fees for about 0.5% gained.",
+          "Checked an ERC777 sender hook re-entering deposit or redeem: share price stays consistent apart from rounding, redeem follows checks-effects-interactions; nothing exploitable."
+        ],
+        "reason": "Traced in source and hand-computed. The claim that the last redeemer cannot withdraw was rejected: redeem pays shares*liveBalance/supply, which never exceeds the balance.",
+        "verifier": "finding-verifier"
+      }
+    }
+  ],
+  "generated_at": "2026-11-01T22:18:22+00:00",
+  "generator": {
+    "name": "swarmsec-audit",
+    "version": "0.1.0"
+  },
+  "limitations": [],
+  "mode": "defi-audit",
+  "run_id": "20261101T172346Z",
+  "schema_version": "1.0",
+  "scope": {
+    "excluded": [],
+    "included": [
+      "."
+    ]
+  },
+  "summary": {
+    "counts": {
+      "critical": 0,
+      "high": 1,
+      "informational": 0,
+      "low": 2,
+      "medium": 0
+    },
+    "statement": "3 substantiated finding(s) in the reviewed scope (1 high, 2 low)."
+  },
+  "target": {
+    "diff_range": null,
+    "name": "vault",
+    "path": ".",
+    "revision": {
+      "commit": "98d69f4efe05660f1f909c03303e93506a6a90ab",
+      "dirty": false
+    }
+  },
+  "tool_runs": [],
+  "tools_detected": {
+    "aderyn": null,
+    "anvil": "anvil Version: 1.5.1-stable",
+    "cast": "cast Version: 1.5.1-stable",
+    "contractmap": null,
+    "echidna": null,
+    "forge": "forge Version: 1.5.1-stable",
+    "medusa": null,
+    "semgrep": null,
+    "slither": null,
+    "solc": null
+  },
+  "unresolved": []
+}

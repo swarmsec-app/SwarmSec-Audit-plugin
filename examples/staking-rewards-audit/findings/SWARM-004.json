@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "id": "SWARM-004",
+  "title": "Pool and distributor wiring is not cross-checked, and rewardToken may equal stakingToken",
+  "category": "input-validation",
+  "severity": "informational",
+  "confidence": "low",
+  "status": "unresolved",
+  "summary": "setDistributor is one-shot and does not check that the distributor's pool is this pool or that its reward token differs from stakingToken. The RewardDistributor constructor takes pool and rewardToken without validation. A wrong value is permanent because setDistributor cannot be called twice. Nothing stops rewardToken and stakingToken being the same token, which the accounting does not anticipate.",
+  "impact": "A deployment mistake bricks the pool (setDistributor cannot be repeated) or ties the distributor to the wrong pool. No attacker-triggerable loss was found; this is hardening.",
+  "attacker": "admin",
+  "preconditions": [
+    "The deployer sets a mismatched distributor, or deploys the distributor with a wrong pool or reward token"
+  ],
+  "affected_components": [
+    {"file": "src/StakingPool.sol", "contract": "StakingPool", "function": "setDistributor"},
+    {"file": "src/RewardDistributor.sol", "contract": "RewardDistributor", "function": "constructor"}
+  ],
+  "evidence": [
+    {"kind": "source", "description": "setDistributor stores any address once; it does not call distributor.pool() or check the reward token.",
+     "location": {"file": "src/StakingPool.sol", "start_line": 24, "end_line": 28},
+     "snippet": "function setDistributor(RewardDistributor distributor_) external {\n        require(msg.sender == deployer, \"not deployer\");\n        require(address(distributor) == address(0), \"already set\");\n        distributor = distributor_;"}
+  ],
+  "reproduction": null,
+  "verification": {
+    "verifier": "finding-verifier",
+    "reason": "Raised by the verifier as a new, unverified observation; impact depends on deployment values not in the repository.",
+    "falsification_attempts": []
+  },
+  "discovered_by": "audit",
+  "remediation": "In setDistributor require distributor_.pool() == address(this) and address(distributor_.rewardToken()) != address(stakingToken). Reject the zero address in the RewardDistributor constructor.",
+  "regression_test": "setDistributor with a distributor built for another pool reverts; setDistributor with matching wiring succeeds once.",
+  "limitations": [
+    "Deployment script and token addresses are not part of the reviewed scope.",
+    "The verifier did not examine this one in depth."
+  ]
+}

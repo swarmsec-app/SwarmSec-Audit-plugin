@@ -1,0 +1,66 @@
+{
+  "build": {
+    "compiler": "0.8.24",
+    "status": "not-attempted",
+    "system": "foundry"
+  },
+  "candidates": [],
+  "coverage_gaps": [
+    "Not compiled and no tests executed; no solc/slither/echidna/medusa available, so no static-analysis or fuzzing coverage.",
+    "The token's behaviour is unknown (constructor argument); rebasing, blocklist and hook semantics were reasoned about generically."
+  ],
+  "disclaimer": "This report comes from an automated, model-assisted review. It is not a formal audit, and the absence of findings does not show that the code is safe.",
+  "dismissed": [],
+  "findings": [],
+  "generated_at": "2026-11-01T22:18:21+00:00",
+  "generator": {
+    "name": "swarmsec-audit",
+    "version": "0.1.0"
+  },
+  "limitations": [
+    "Manual review by a single reviewer; hypotheses were all informational or lower and none was sent to an independent verifier.",
+    "No proof-of-concept tests were run."
+  ],
+  "mode": "audit",
+  "run_id": "20261101T171945Z",
+  "schema_version": "1.0",
+  "scope": {
+    "excluded": [],
+    "included": [
+      "."
+    ]
+  },
+  "summary": {
+    "counts": {
+      "critical": 0,
+      "high": 0,
+      "informational": 0,
+      "low": 0,
+      "medium": 0
+    },
+    "statement": "No substantiated findings in the reviewed scope."
+  },
+  "target": {
+    "diff_range": null,
+    "name": "benign",
+    "path": ".",
+    "revision": {
+      "commit": "2ece1d0ce9b30c3a9b301e5adafd39e988b121cf",
+      "dirty": false
+    }
+  },
+  "tool_runs": [],
+  "tools_detected": {
+    "aderyn": null,
+    "anvil": "anvil Version: 1.5.1-stable",
+    "cast": "cast Version: 1.5.1-stable",
+    "contractmap": null,
+    "echidna": null,
+    "forge": "forge Version: 1.5.1-stable",
+    "medusa": null,
+    "semgrep": null,
+    "slither": null,
+    "solc": null
+  },
+  "unresolved": []
+}

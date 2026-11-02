@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "id": "SWARM-002",
+  "title": "Keeper yield arrives as a lump-sum balance increase, so just-in-time depositors capture it",
+  "category": "economic",
+  "severity": "low",
+  "confidence": "medium",
+  "status": "supported",
+  "summary": "Yield is a plain token transfer to the vault, which steps the share price up at once. There is no lockup, deposit fee, streaming or same-block guard, so an account that deposits before the keeper transfer and redeems after it takes yield pro rata to its capital without being exposed for any time.",
+  "impact": "Long-term holders are diluted. Example: honest holder has 1000 shares on 1000 assets; attacker deposits 1000, keeper sends 100, attacker redeems 1000 shares for 1050 and takes 50 of the 100 yield. In general the attacker captures Y*d/(A+d) of yield Y for a deposit d. No principal is lost.",
+  "attacker": "unprivileged",
+  "preconditions": [
+    "The keeper transfers yield to the vault in discrete lumps (per NatSpec); the keeper code is not in this repo",
+    "The attacker can order a deposit before and a redeem after the keeper transfer (sees it in the mempool, or knows the schedule)",
+    "Profit exceeds the attacker's funding cost; capital can be borrowed for the transaction, but only if the loan fee is below the captured yield"
+  ],
+  "affected_components": [
+    {"file": "src/ShareVault.sol", "contract": "ShareVault", "function": "deposit"},
+    {"file": "src/ShareVault.sol", "contract": "ShareVault", "function": "redeem"}
+  ],
+  "evidence": [
+    {"kind": "source", "description": "NatSpec states the yield mechanism: it is sent to the vault and reflected through the pro-rata claim.",
+     "location": {"file": "src/ShareVault.sol", "start_line": 6, "end_line": 7},
+     "snippet": "/// @notice Single-asset yield vault. Shares track a pro-rata claim on every asset the vault holds,\n///         including yield that a strategy keeper sends back to the vault."},
+    {"kind": "call-path", "description": "deposit mints at the pre-yield balance price and redeem pays at the post-yield price, with nothing between them and no restriction on either caller.",
+     "location": {"file": "src/ShareVault.sol", "start_line": 42, "end_line": 49}},
+    {"kind": "reasoning", "description": "Arithmetic above (1000/1000 holder, attacker 1000, yield 100): assets 2100 over 2000 shares, attacker redeems 1000 shares for 1050."}
+  ],
+  "reproduction": null,
+  "verification": {
+    "verifier": "finding-verifier",
+    "reason": "Traced in source and hand-computed. No lockup, fee, streaming or access control exists in the 50 lines, and no keeper code is in the repo. Severity lowered by the verifier because only yield moves, never principal, and discrete-harvest vaults share this property.",
+    "falsification_attempts": [
+      "Searched for lockup, delay, fee, streaming and same-block guards: none.",
+      "Searched for access control on deposit and redeem: none.",
+      "Grepped for any keeper or strategy transfer in the repo: only the vault's own transfer calls at lines 36 and 47."
+    ]
+  },
+  "discovered_by": "defi-audit",
+  "remediation": "Stream yield over a period (rewardRate style) instead of transferring it as a lump, or charge an entry/exit fee that stays in the vault, or enforce a minimum holding time. If the keeper submits through a private mempool and the amounts are small, document it as accepted.",
+  "regression_test": "Second user deposits, the keeper transfers yield, the second user redeems in the same block: the second user's profit is at most the streamed share for zero elapsed time (zero), and the long-term holder keeps the full yield.",
+  "limitations": [
+    "Keeper size, cadence and submission method are unknown, so profitability is not quantified.",
+    "Whether the behaviour is intended is unknown; the NatSpec does not promise yield to long-term holders only.",
+    "Not executed; hand-computed only."
+  ]
+}

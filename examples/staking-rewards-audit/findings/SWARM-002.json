@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "id": "SWARM-002",
+  "title": "Reward transfer happens before rewardDebt is updated, so a hook-capable reward token allows re-entrant double claims",
+  "category": "reentrancy",
+  "severity": "low",
+  "confidence": "low",
+  "status": "unresolved",
+  "summary": "_harvest sends the reward token before its callers (claim, onStake, onUnstake) reset rewardDebt, and the contract has no reentrancy guard. If the reward token calls back into the recipient on transfer, the recipient can re-enter claim() and be paid the same pending amount repeatedly.",
+  "impact": "If the reward token has recipient hooks (ERC777-style), an attacker can drain the distributor's whole reward balance. With a plain ERC20 there is no impact. Severity is rated low until the token is known; it would be critical for a hook token.",
+  "attacker": "external-dependency",
+  "preconditions": [
+    "rewardToken invokes a callback on the recipient during transfer",
+    "Distributor holds a reward balance larger than the attacker's pending amount"
+  ],
+  "affected_components": [
+    {"file": "src/RewardDistributor.sol", "contract": "RewardDistributor", "function": "_harvest"},
+    {"file": "src/RewardDistributor.sol", "contract": "RewardDistributor", "function": "claim"}
+  ],
+  "evidence": [
+    {"kind": "source", "description": "The reward transfer is an external call made while rewardDebt and pending are still unchanged.",
+     "location": {"file": "src/RewardDistributor.sol", "start_line": 62, "end_line": 64},
+     "snippet": "uint256 amount = pending(account);\n        if (amount > 0) {\n            require(rewardToken.transfer(account, amount), \"transfer failed\");"},
+    {"kind": "call-path", "description": "claim() -> _harvest (transfer, hook re-enters claim()) -> _harvest pays the same pending again; rewardDebt is only reset after _harvest returns.",
+     "location": {"file": "src/RewardDistributor.sol", "start_line": 52, "end_line": 55},
+     "snippet": "_harvest(msg.sender);\n        rewardDebt[msg.sender] = shares[msg.sender] * accRewardPerShare / PRECISION;"}
+  ],
+  "reproduction": null,
+  "verification": {
+    "verifier": "finding-verifier",
+    "reason": "The ordering is real and unguarded, but exploitability depends on the reward token, which is not in the repository.",
+    "falsification_attempts": [
+      "Looked for a guard or checks-effects-interactions ordering in claim, onStake and onUnstake: none.",
+      "Checked whether a plain IERC20.transfer can call back into the recipient: no, only hook tokens do.",
+      "Checked the staking-token side: withdraw and emergencyWithdraw update state before transferring; stake has no exploitable stale state."
+    ]
+  },
+  "discovered_by": "audit",
+  "remediation": "In _harvest callers (or inside _harvest), set rewardDebt to the new value before the transfer, or add a nonReentrant guard to claim, onStake and onUnstake. Use SafeERC20 as well.",
+  "regression_test": "With a mock reward token whose transfer calls claim() on the recipient, a single claim pays out exactly pending(account) once, and the distributor balance falls by that amount only.",
+  "limitations": [
+    "Reward token implementation is not part of the reviewed scope.",
+    "Not executed."
+  ]
+}

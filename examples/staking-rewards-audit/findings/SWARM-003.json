@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "id": "SWARM-003",
+  "title": "Rewards are paid instantly to current shares, so just-in-time stakers capture third-party notifyReward batches",
+  "category": "economic",
+  "severity": "low",
+  "confidence": "medium",
+  "status": "supported",
+  "summary": "notifyReward is permissionless and raises accRewardPerShare immediately, with no vesting or time weighting. A staker can stake a large amount just before someone else's notifyReward, claim a pro-rata share and withdraw straight after. The contract comment says rewards 'stream' to stakers, but no streaming exists.",
+  "impact": "Reward value moves from long-term stakers to the just-in-time staker, in proportion to C/(C+H). Principal is not at risk and the capital is returned, so the cost is gas and opportunity cost. The attacker must hold capital across the victim's notifyReward transaction (MEV bundle or a predictable keeper schedule); a flash loan alone does not work.",
+  "attacker": "unprivileged",
+  "preconditions": [
+    "A third party funds notifyReward at a time the attacker can predict or sandwich",
+    "Attacker holds enough staking token to be a large share of totalShares"
+  ],
+  "affected_components": [
+    {"file": "src/RewardDistributor.sol", "contract": "RewardDistributor", "function": "notifyReward"}
+  ],
+  "evidence": [
+    {"kind": "source", "description": "The full reward is added to accRewardPerShare at once, split over the shares present at that moment.",
+     "location": {"file": "src/RewardDistributor.sol", "start_line": 31, "end_line": 35},
+     "snippet": "function notifyReward(uint256 amount) external {\n        require(totalShares > 0, \"no stakers\");\n        require(rewardToken.transferFrom(msg.sender, address(this), amount), \"transfer failed\");\n        accRewardPerShare += amount * PRECISION / totalShares;"},
+    {"kind": "source", "description": "The NatSpec promises a stream, but nothing implements one.",
+     "location": {"file": "src/RewardDistributor.sol", "start_line": 6, "end_line": 6},
+     "snippet": "/// @notice Streams reward tokens to stakers of a StakingPool, pro rata to their stake."}
+  ],
+  "reproduction": null,
+  "verification": {
+    "verifier": "finding-verifier",
+    "reason": "Mechanism holds in source and there is no lock or delay. It is a recognised weakness of instant-distribution pools rather than an accounting bug, so severity stays low.",
+    "falsification_attempts": [
+      "Looked for vesting, lock or delay on stake/withdraw: none.",
+      "Checked whether a flash loan suffices: no, the attacker must be staked across the victim's transaction.",
+      "Checked whether the attacker gains by calling notifyReward itself: no, it pays R and gets back R*C/(C+H)."
+    ]
+  },
+  "discovered_by": "audit",
+  "remediation": "Stream the reward over a period (rewardRate and periodFinish, updating accRewardPerShare with elapsed time), or document that rewards are instant and fund them in a way that cannot be front-run (private mempool or minimum stake duration).",
+  "regression_test": "Stake H, notifyReward(R), then a second account stakes C, claims and withdraws in the same block as a later notifyReward: the second account's reward must be near zero.",
+  "limitations": [
+    "Who calls notifyReward and how predictably is outside the reviewed code.",
+    "Not executed."
+  ]
+}

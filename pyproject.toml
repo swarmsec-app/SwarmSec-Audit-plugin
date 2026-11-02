@@ -1,0 +1,32 @@
+# Development tooling only. The plugin's helper scripts use the Python standard library.
+[project]
+name = "swarmsec-audit-dev"
+version = "0.1.0"
+requires-python = ">=3.11"
+
+[dependency-groups]
+dev = [
+  "pytest==8.4.2",
+  "jsonschema==4.25.1",
+  "ruff==0.13.3",
+]
+
+# claude plugin eval refuses hard-linked files inside the plugin, so keep .venv as plain copies.
+[tool.uv]
+link-mode = "copy"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["tests/fixtures", "tests/poc"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["RUF001"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["swarmsec_audit", "conftest"]

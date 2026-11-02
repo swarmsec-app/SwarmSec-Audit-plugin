@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "id": "SWARM-003",
+  "title": "Vault assumes a plain ERC20: fee-on-transfer dilutes holders, no-return tokens brick it",
+  "category": "token-integration",
+  "severity": "low",
+  "confidence": "medium",
+  "status": "supported",
+  "summary": "deposit credits shares for the nominal `assets` argument instead of the balance actually received, and both transfer calls are declared to return bool. The asset is an unknown immutable constructor argument, so behaviour depends on the token chosen.",
+  "impact": "With a 1% fee-on-transfer token, Bob's 1000 deposit (990 received) mints 1010 shares against Alice's 1000 for 990, shifting about 4.9 of value from Alice to Bob; the vault stays pro-rata solvent because redeem pays from the live balance, so the loss is dilution, not a failing last redemption. With a token that returns no data (USDT-style) every deposit and redeem reverts, so the vault is unusable (deposits revert before minting, so no funds are lost; direct transfers sent to it are stuck). A token whose balance reaches 0 while shares exist makes deposit divide by zero.",
+  "attacker": "external-dependency",
+  "preconditions": [
+    "The vault is deployed with a fee-on-transfer, no-return-data, or balance-zeroing token as `asset`"
+  ],
+  "affected_components": [
+    {"file": "src/ShareVault.sol", "contract": "ShareVault", "function": "deposit"},
+    {"file": "src/ShareVault.sol", "contract": "ShareVault", "function": "redeem"}
+  ],
+  "evidence": [
+    {"kind": "source", "description": "Shares are computed from the nominal amount and the received amount is never measured.",
+     "location": {"file": "src/ShareVault.sol", "start_line": 35, "end_line": 38},
+     "snippet": "shares = convertToShares(assets);\n        require(asset.transferFrom(msg.sender, address(this), assets), \"transfer failed\");\n        totalSupply += shares;\n        balanceOf[receiver] += shares;"},
+    {"kind": "source", "description": "The interface declares bool returns, so empty returndata fails ABI decoding.",
+     "location": {"file": "src/IERC20.sol", "start_line": 6, "end_line": 7},
+     "snippet": "function transfer(address to, uint256 amount) external returns (bool);\n    function transferFrom(address from, address to, uint256 amount) external returns (bool);"},
+    {"kind": "reasoning", "description": "1% fee: Alice 1000 in, vault +990, 1000 shares. Bob 1000 in, vault +990, floor(1000*1000/990) = 1010 shares. Assets 1980 over 2010 shares: Alice redeems 985, last holder gets 995 for 1010 shares. A round-trip attacker pays about 2% fees for about 0.5% gain, so it is not extractable."}
+  ],
+  "reproduction": null,
+  "verification": {
+    "verifier": "finding-verifier",
+    "reason": "Traced in source and hand-computed. The claim that the last redeemer cannot withdraw was rejected: redeem pays shares*liveBalance/supply, which never exceeds the balance.",
+    "falsification_attempts": [
+      "Checked whether the last redeemer's transfer can fail for lack of balance: no, the payout is capped by the live balance.",
+      "Checked whether a round-trip attacker profits from the fee-induced dilution: no, about 2% in fees for about 0.5% gained.",
+      "Checked an ERC777 sender hook re-entering deposit or redeem: share price stays consistent apart from rounding, redeem follows checks-effects-interactions; nothing exploitable."
+    ]
+  },
+  "discovered_by": "defi-audit",
+  "remediation": "Document that the asset must be a plain ERC20, or measure the balance before and after transferFrom and mint shares from the received amount. Use a safeTransfer/safeTransferFrom wrapper for tokens that return nothing.",
+  "regression_test": "With a mock 1% fee token, two equal deposits mint equal shares and each can redeem within rounding of what the vault received; with a no-return-data mock token, deposit and redeem succeed.",
+  "limitations": [
+    "The asset address is not in the repo; the finding is conditional on the token chosen at deployment.",
+    "Not executed; hand-computed only."
+  ]
+}

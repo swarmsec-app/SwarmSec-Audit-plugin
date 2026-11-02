@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0",
+  "id": "SWARM-001",
+  "title": "emergencyWithdraw leaves phantom shares in RewardDistributor, letting anyone farm rewards with no stake",
+  "category": "rewards",
+  "severity": "high",
+  "confidence": "high",
+  "status": "reproduced",
+  "summary": "StakingPool.emergencyWithdraw zeroes the caller's balance and returns the tokens but never calls distributor.onUnstake, so RewardDistributor.shares[user] and totalShares keep the old stake. The user can stake again and repeat, growing shares by the stake size each loop while the capital is returned every time.",
+  "impact": "An attacker with a small amount of capital (or a flash loan) inflates their shares without bound and captures almost all later notifyReward distributions, while holding no stake. Honest stakers are diluted toward zero (with 1000 honest and 1000 attacker stake, a reward of 100 splits 50/50 at one cycle, about 91/9 at ten cycles, 99/1 at one hundred). Principal is not at risk, and the loss is limited to rewards. Rewards can also accrue to phantom holders only if totalStaked reaches 0.",
+  "attacker": "unprivileged",
+  "preconditions": [
+    "RewardDistributor is wired in and rewards are being notified (notifyReward) while the attacker holds phantom shares",
+    "Attacker holds or can borrow some staking token"
+  ],
+  "affected_components": [
+    {"file": "src/StakingPool.sol", "contract": "StakingPool", "function": "emergencyWithdraw"},
+    {"file": "src/RewardDistributor.sol", "contract": "RewardDistributor", "function": "onStake"},
+    {"file": "src/RewardDistributor.sol", "contract": "RewardDistributor", "function": "claim"}
+  ],
+  "evidence": [
+    {"kind": "source", "description": "emergencyWithdraw clears pool balances and returns tokens but makes no call to distributor.onUnstake, so the distributor ledger is not reduced.",
+     "location": {"file": "src/StakingPool.sol", "start_line": 51, "end_line": 53},
+     "snippet": "balances[msg.sender] = 0;\n        totalStaked -= amount;\n        require(stakingToken.transfer(msg.sender, amount), \"transfer failed\");"},
+    {"kind": "source", "description": "stake reports the amount to the distributor, which only ever adds to shares and totalShares; nothing compares shares to pool balances.",
+     "location": {"file": "src/RewardDistributor.sol", "start_line": 40, "end_line": 41},
+     "snippet": "shares[account] += amount;\n        totalShares += amount;"},
+    {"kind": "source", "description": "claim pays out on distributor shares alone, with no check that the caller still has a pool balance.",
+     "location": {"file": "src/RewardDistributor.sol", "start_line": 52, "end_line": 55},
+     "snippet": "function claim() external {\n        _harvest(msg.sender);\n        rewardDebt[msg.sender] = shares[msg.sender] * accRewardPerShare / PRECISION;\n    }"},
+    {"kind": "call-path", "description": "stake(C) -> onStake adds C shares; emergencyWithdraw returns C tokens, shares unchanged; stake(C) again -> shares 2C; repeat N times. notifyReward divides by the inflated totalShares and claim pays on the inflated shares.",
+     "location": {"file": "src/RewardDistributor.sol", "start_line": 34, "end_line": 34},
+     "snippet": "accRewardPerShare += amount * PRECISION / totalShares;"},
+    {"kind": "test", "description": "test_phantomSharesCaptureRewards: 10 stake/emergencyWithdraw cycles of 1000 leave the attacker with 0 pool balance, all 1000 tokens back, shares == 10000 and totalShares == 11000 against totalStaked == 1000. After notifyReward(1100) the attacker claims 1000 and the honest staker 100. Control test_control_withdrawLoopEarnsNothing: the same loop through withdraw() leaves shares == 0, totalShares == totalStaked, attacker reward 0, honest reward 1100. Both pass.", "tool_run": "TR-001"},
+    {"kind": "reasoning", "description": "No revert blocks the loop: rewardDebt is always set to floor(shares*acc/1e18) at the current acc, and acc never decreases, so pending never underflows. withdraw after an emergencyWithdraw reverts on the balances underflow, which only stops the attacker taking extra tokens."}
+  ],
+  "reproduction": {"method": "foundry-test", "command": "forge test --match-path test/swarmsec/PhantomShares.t.sol -vvv", "test_file": "test/swarmsec/PhantomShares.t.sol", "tool_run": "TR-001", "result": "demonstrated", "environment": "local",
+    "assertions": [
+      "pool.balances(attacker) == 0 and stakeToken.balanceOf(attacker) == 1000 after 10 cycles",
+      "distributor.shares(attacker) == 10000 and distributor.totalShares() == 11000 while pool.totalStaked() == 1000",
+      "after notifyReward(1100): attacker reward == 1000, honest reward == 100",
+      "control (withdraw loop): shares(attacker) == 0, totalShares == totalStaked, attacker reward == 0, honest reward == 1100"
+    ]},
+  "verification": {
+    "verifier": "finding-verifier",
+    "reason": "Traced end to end in source with no guard on the stake/emergencyWithdraw loop, then executed in a sandbox copy with plain mock ERC20s (TR-001): the attacker holds no stake yet captures 10/11 of the reward, while the withdraw() control leaves the ledger in sync.",
+    "falsification_attempts": [
+      "Looked for a revert when shares exceed balances in onStake, _harvest and pending: none, pending cannot underflow.",
+      "Checked whether withdraw after emergencyWithdraw breaks honest users: it reverts only for the attacker (balances underflow); shares >= balances always holds so honest onUnstake cannot underflow.",
+      "Checked for an overflow bound on shares: uint256, unreachable.",
+      "Checked whether the attacker can push the reward balance below honest pending: the ledger stays solvent, so honest withdraw reverting after a drain was not supported and was dropped from the impact."
+    ]
+  },
+  "discovered_by": "audit",
+  "remediation": "Call distributor.onUnstake(msg.sender, amount) in emergencyWithdraw (StakingPool.sol:48-55) so the ledger stays equal to the pool. If the exit must work when the reward-token transfer can revert, give the distributor a forced-exit function that burns shares without calling _harvest, and call that instead.",
+  "regression_test": "stake(C), emergencyWithdraw(), then assert distributor.shares(user) == 0 and distributor.totalShares() == pool.totalStaked(). Also: after three stake/emergencyWithdraw loops, notifyReward(R) and claim() pay the user nothing.",
+  "limitations": [
+    "Test uses plain mock tokens (no fee-on-transfer, hooks or blocklists) and no fork; the real staking and reward tokens were not exercised.",
+    "The 10/11 split is for 10 cycles against 1000 honest stake; it scales with cycles and honest stake, and the attacker needs no stake at claim time.",
+    "The single-transaction flash-loan variant and the real size of the loss depend on the actual staking token and the reward amounts."
+  ]
+}

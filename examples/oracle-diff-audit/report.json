@@ -1,0 +1,156 @@
+{
+  "build": {
+    "compiler": "0.8.24",
+    "status": "not-attempted",
+    "system": "foundry"
+  },
+  "candidates": [],
+  "coverage_gaps": [
+    "Slither not installed: no static-analysis cross-check."
+  ],
+  "disclaimer": "This report comes from an automated, model-assisted review. It is not a formal audit, and the absence of findings does not show that the code is safe.",
+  "dismissed": [],
+  "findings": [
+    {
+      "affected_components": [
+        {
+          "contract": "LendingMarket",
+          "file": "src/LendingMarket.sol",
+          "function": "maxDebt"
+        },
+        {
+          "contract": "PriceOracle",
+          "file": "src/PriceOracle.sol",
+          "function": "getPrice"
+        }
+      ],
+      "attacker": "unprivileged",
+      "category": "oracle",
+      "confidence": "high",
+      "diff_attribution": "introduced",
+      "discovered_by": "diff-audit",
+      "evidence": [
+        {
+          "description": "getPrice now multiplies the stored 8-decimal price by 1e10, so it returns 18 decimals. This is the only code change in the commit.",
+          "kind": "source",
+          "location": {
+            "end_line": 30,
+            "file": "src/PriceOracle.sol",
+            "start_line": 30
+          },
+          "snippet": "return prices[token] * 1e10;"
+        },
+        {
+          "description": "maxDebt still carries the comment and the 1e10 scaling that assumed an 8-decimal oracle price, so the price is scaled twice.",
+          "kind": "source",
+          "location": {
+            "end_line": 52,
+            "file": "src/LendingMarket.sol",
+            "start_line": 50
+          },
+          "snippet": "// Oracle prices have 8 decimals; scale to the stablecoin's 18.\n        uint256 value = collateralOf[account] * oracle.getPrice(address(collateralToken)) * 1e10\n            / (10 ** collateralDecimals);"
+        },
+        {
+          "description": "borrow -> maxDebt -> oracle.getPrice. borrow checks debtOf <= maxDebt (inflated 1e10x) and then transfers stable to the caller. depositCollateral and borrow have no access control.",
+          "kind": "call-path",
+          "location": {
+            "end_line": 35,
+            "file": "src/LendingMarket.sol",
+            "start_line": 31
+          }
+        },
+        {
+          "description": "With collateral of 18 decimals and a $2000 price stored as 2000e8, 1e10 wei of collateral gave a maxDebt of 1.4e13 wei (about $0.000014) before the commit. After it, the same deposit gives 1.4e23 wei (about $140k), exactly 1e10 times more. The multiplication cannot overflow for realistic amounts (about 2e49 against 2^256 of about 1.16e77).",
+          "kind": "reasoning"
+        }
+      ],
+      "id": "SWARM-001",
+      "impact": "Anyone can deposit a negligible amount of collateral and borrow up to the whole stablecoin balance held by the market. withdrawCollateral uses the same maxDebt, so almost all collateral can then be withdrawn while the debt stays, leaving the loan effectively unsecured.",
+      "limitations": [
+        "Not executed: the evidence is a source trace and arithmetic, not a passing Foundry test.",
+        "Deployment was not checked: the attack needs a fresh oracle price and a stablecoin balance in the market.",
+        "The perps integration that the commit message refers to is outside this repo and was not reviewed."
+      ],
+      "preconditions": [
+        "The oracle price for the collateral token is fresh (updated within MAX_AGE of 1 hour)",
+        "LendingMarket holds a stablecoin balance to borrow"
+      ],
+      "regression_test": "With a price of 2000e8 and 1e18 collateral deposited, maxDebt equals 1400e18, and borrow(1400e18 + 1) reverts with 'undercollateralised'.",
+      "remediation": "Drop the extra scaling in LendingMarket.maxDebt (src/LendingMarket.sol:51-52): compute collateralOf[account] * oracle.getPrice(address(collateralToken)) / (10 ** collateralDecimals) and update the comment to say the price has 18 decimals. Alternatively keep getPrice at 8 decimals and add a separate 18-decimal getter for the perps integration.",
+      "reproduction": {
+        "assertions": [],
+        "command": "",
+        "environment": "none",
+        "method": "manual-trace",
+        "result": "not-run",
+        "test_file": null,
+        "tool_run": null
+      },
+      "schema_version": "1.0",
+      "severity": "critical",
+      "status": "supported",
+      "summary": "Commit 3a85216 changed PriceOracle.getPrice to return prices[token] * 1e10 (18 decimals). LendingMarket.maxDebt, unchanged, still assumes an 8-decimal price and multiplies by another 1e10, so collateral value is overstated by a factor of 1e10.",
+      "title": "getPrice now returns 18 decimals but LendingMarket.maxDebt still scales by 1e10, inflating borrow limits 1e10x",
+      "verification": {
+        "falsification_attempts": [
+          "Searched for other getPrice callers: LendingMarket.maxDebt is the only one in the repo, so nothing adjusts for the new scale.",
+          "Checked for an overflow revert in the maxDebt multiplication: it only reverts at about 1e37 tokens, so it does not block the attack.",
+          "Checked whether collateralDecimals absorbs the factor: it is only the divisor 10**collateralDecimals, so it cannot.",
+          "Checked the stale and zero price guards: they only matter when the oracle is stale, so they are preconditions, not defences.",
+          "Looked for a per-user borrow cap or other limit: none exists; the only limit is the stable balance in the market.",
+          "Compared against HEAD~1: getPrice returned the raw 8-decimal price there and the 1e10 in maxDebt was correct, so this commit alone causes the break."
+        ],
+        "reason": "Traced end to end in source and by arithmetic; nothing in the path stops it. Not executed: the sandbox test was not run.",
+        "verifier": "finding-verifier"
+      }
+    }
+  ],
+  "generated_at": "2026-11-01T22:18:22+00:00",
+  "generator": {
+    "name": "swarmsec-audit",
+    "version": "0.1.0"
+  },
+  "limitations": [],
+  "mode": "diff-audit",
+  "run_id": "20261101T173002Z",
+  "schema_version": "1.0",
+  "scope": {
+    "excluded": [],
+    "included": [
+      "."
+    ]
+  },
+  "summary": {
+    "counts": {
+      "critical": 1,
+      "high": 0,
+      "informational": 0,
+      "low": 0,
+      "medium": 0
+    },
+    "statement": "1 substantiated finding(s) in the reviewed scope (1 critical)."
+  },
+  "target": {
+    "diff_range": "HEAD~1..HEAD",
+    "name": "diff",
+    "path": ".",
+    "revision": {
+      "commit": "3a85216e8307ccf4078b6c9285673fc14f1cf438",
+      "dirty": false
+    }
+  },
+  "tool_runs": [],
+  "tools_detected": {
+    "aderyn": null,
+    "anvil": "anvil Version: 1.5.1-stable",
+    "cast": "cast Version: 1.5.1-stable",
+    "contractmap": null,
+    "echidna": null,
+    "forge": "forge Version: 1.5.1-stable",
+    "medusa": null,
+    "semgrep": null,
+    "slither": null,
+    "solc": null
+  },
+  "unresolved": []
+}

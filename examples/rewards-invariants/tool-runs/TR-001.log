@@ -1,0 +1,139 @@
+Compiling 4 files with Solc 0.8.24
+Solc 0.8.24 finished in 121.63ms
+Compiler run successful!
+
+Ran 6 tests for test/invariants/StakingInvariants.t.sol:StakingInvariants
+[PASS] invariant_distributorTotalSharesEqualsSumOfShares() (runs: 256, calls: 128000, reverts: 0)
+
+╭----------+-------------------+-------+---------+----------╮
+| Contract | Selector          | Calls | Reverts | Discards |
++===========================================================+
+| Handler  | claim             | 21233 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | donate            | 21221 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | emergencyWithdraw | 21557 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | notifyReward      | 21397 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | stake             | 21286 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | withdraw          | 21306 | 0       | 0        |
+╰----------+-------------------+-------+---------+----------╯
+
+[PASS] invariant_poolHoldsAllStakedTokens() (runs: 256, calls: 128000, reverts: 0)
+
+╭----------+-------------------+-------+---------+----------╮
+| Contract | Selector          | Calls | Reverts | Discards |
++===========================================================+
+| Handler  | claim             | 21229 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | donate            | 21257 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | emergencyWithdraw | 21047 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | notifyReward      | 21640 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | stake             | 21507 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | withdraw          | 21320 | 0       | 0        |
+╰----------+-------------------+-------+---------+----------╯
+
+[PASS] invariant_poolTotalEqualsSumOfBalances() (runs: 256, calls: 128000, reverts: 0)
+
+╭----------+-------------------+-------+---------+----------╮
+| Contract | Selector          | Calls | Reverts | Discards |
++===========================================================+
+| Handler  | claim             | 21470 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | donate            | 21269 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | emergencyWithdraw | 21455 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | notifyReward      | 21249 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | stake             | 21233 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | withdraw          | 21324 | 0       | 0        |
+╰----------+-------------------+-------+---------+----------╯
+
+[PASS] invariant_rewardsAreCovered() (runs: 256, calls: 128000, reverts: 0)
+
+╭----------+-------------------+-------+---------+----------╮
+| Contract | Selector          | Calls | Reverts | Discards |
++===========================================================+
+| Handler  | claim             | 21347 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | donate            | 21258 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | emergencyWithdraw | 21380 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | notifyReward      | 21348 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | stake             | 21318 | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | withdraw          | 21349 | 0       | 0        |
+╰----------+-------------------+-------+---------+----------╯
+
+[FAIL: shares != pool balance]
+	[Sequence] (original: 31, shrunk: 2)
+		sender=0x000000000000000000000000000000003F7286F4 addr=[test/invariants/StakingInvariants.t.sol:Handler]0xc7183455a4C133Ae270771860664b6B7ec320bB1 calldata=stake(uint256,uint256) args=[1399519460 [1.399e9], 3942901711539117348 [3.942e18]]
+		sender=0x40De7e0A7CBF24cF5b16baD7657B22fe0CaBE4A5 addr=[test/invariants/StakingInvariants.t.sol:Handler]0xc7183455a4C133Ae270771860664b6B7ec320bB1 calldata=emergencyWithdraw(uint256) args=[4801820223179594885143565860907650526609 [4.801e39]]
+ invariant_sharesMirrorPoolBalances() (runs: 0, calls: 0, reverts: 0)
+
+╭----------+-------------------+-------+---------+----------╮
+| Contract | Selector          | Calls | Reverts | Discards |
++===========================================================+
+| Handler  | claim             | 6     | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | donate            | 5     | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | emergencyWithdraw | 6     | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | notifyReward      | 8     | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | stake             | 2     | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | withdraw          | 4     | 0       | 0        |
+╰----------+-------------------+-------+---------+----------╯
+
+[FAIL: totalShares != totalStaked]
+	[Sequence] (original: 11, shrunk: 2)
+		sender=0x0d2CbEe5f9548D34a652D0088e6C75151B587CA7 addr=[test/invariants/StakingInvariants.t.sol:Handler]0xc7183455a4C133Ae270771860664b6B7ec320bB1 calldata=stake(uint256,uint256) args=[52200402235326046718277115916962680008697577353855000472386355763222348300288 [5.22e76], 161]
+		sender=0x00000000000000000000000000000000000001fB addr=[test/invariants/StakingInvariants.t.sol:Handler]0xc7183455a4C133Ae270771860664b6B7ec320bB1 calldata=emergencyWithdraw(uint256) args=[11678465862983262291175595870741 [1.167e31]]
+ invariant_totalSharesEqualsTotalStaked() (runs: 0, calls: 0, reverts: 0)
+
+╭----------+-------------------+-------+---------+----------╮
+| Contract | Selector          | Calls | Reverts | Discards |
++===========================================================+
+| Handler  | claim             | 1     | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | donate            | 1     | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | emergencyWithdraw | 2     | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | notifyReward      | 2     | 0       | 0        |
+|----------+-------------------+-------+---------+----------|
+| Handler  | stake             | 5     | 0       | 0        |
+╰----------+-------------------+-------+---------+----------╯
+
+Suite result: FAILED. 4 passed; 2 failed; 0 skipped; finished in 27.79s (104.88s CPU time)
+
+Ran 1 test suite in 27.80s (27.79s CPU time): 4 tests passed, 2 failed, 0 skipped (6 total tests)
+
+Failing tests:
+Encountered 2 failing tests in test/invariants/StakingInvariants.t.sol:StakingInvariants
+[FAIL: shares != pool balance]
+	[Sequence] (original: 31, shrunk: 2)
+		sender=0x000000000000000000000000000000003F7286F4 addr=[test/invariants/StakingInvariants.t.sol:Handler]0xc7183455a4C133Ae270771860664b6B7ec320bB1 calldata=stake(uint256,uint256) args=[1399519460 [1.399e9], 3942901711539117348 [3.942e18]]
+		sender=0x40De7e0A7CBF24cF5b16baD7657B22fe0CaBE4A5 addr=[test/invariants/StakingInvariants.t.sol:Handler]0xc7183455a4C133Ae270771860664b6B7ec320bB1 calldata=emergencyWithdraw(uint256) args=[4801820223179594885143565860907650526609 [4.801e39]]
+ invariant_sharesMirrorPoolBalances() (runs: 0, calls: 0, reverts: 0)
+[FAIL: totalShares != totalStaked]
+	[Sequence] (original: 11, shrunk: 2)
+		sender=0x0d2CbEe5f9548D34a652D0088e6C75151B587CA7 addr=[test/invariants/StakingInvariants.t.sol:Handler]0xc7183455a4C133Ae270771860664b6B7ec320bB1 calldata=stake(uint256,uint256) args=[52200402235326046718277115916962680008697577353855000472386355763222348300288 [5.22e76], 161]
+		sender=0x00000000000000000000000000000000000001fB addr=[test/invariants/StakingInvariants.t.sol:Handler]0xc7183455a4C133Ae270771860664b6B7ec320bB1 calldata=emergencyWithdraw(uint256) args=[11678465862983262291175595870741 [1.167e31]]
+ invariant_totalSharesEqualsTotalStaked() (runs: 0, calls: 0, reverts: 0)
+
+Encountered a total of 2 failing tests, 4 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 2 failed tests
