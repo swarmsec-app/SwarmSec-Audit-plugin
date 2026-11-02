@@ -1,0 +1,16 @@
+{
+  "name": "swarmsec-security",
+  "description": "SwarmSec security plugins for Claude Code.",
+  "owner": {
+    "name": "SwarmSec",
+    "url": "https://swarmsec.app"
+  },
+  "plugins": [
+    {
+      "name": "swarmsec-audit",
+      "source": "./",
+      "description": "Evidence-first Solidity and DeFi security auditing workflows, verification, invariants, and differential review.",
+      "category": "security"
+    }
+  ]
+}
