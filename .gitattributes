@@ -1,0 +1,2 @@
+# Eval scaffold scripts run under bash, including Git Bash on Windows.
+*.sh text eol=lf
