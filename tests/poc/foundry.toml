@@ -1,0 +1,17 @@
+[profile.default]
+src = "test"
+test = "test"
+out = "out"
+cache_path = "cache"
+libs = []
+solc_version = "0.8.24"
+remappings = ["fixtures/=../fixtures/"]
+allow_paths = ["../fixtures"]
+
+[lint]
+lint_on_build = false
+
+[invariant]
+runs = 64
+depth = 32
+fail_on_revert = false
