@@ -1,0 +1,22 @@
+{
+  "name": "swarmsec-audit",
+  "displayName": "SwarmSec Audit",
+  "description": "Evidence-first Solidity and DeFi security auditing workflows, verification, invariants, and differential review.",
+  "version": "0.1.0",
+  "author": {
+    "name": "SwarmSec",
+    "url": "https://swarmsec.app"
+  },
+  "homepage": "https://github.com/SwarmSec/swarmsec-audit",
+  "repository": "https://github.com/SwarmSec/swarmsec-audit",
+  "license": "MIT",
+  "keywords": [
+    "solidity",
+    "evm",
+    "defi",
+    "security",
+    "audit",
+    "foundry"
+  ],
+  "icon": "./.claude-plugin/icon.png"
+}
